@@ -50,7 +50,6 @@ export function CartContent() {
                 {/* Product Image */}
                 <div className="relative h-24 w-24 flex-shrink-0 overflow-hidden rounded-lg bg-gray-200">
                   <ProductImage
-                    productId={item.product.id}
                     image={item.product.image}
                     alt={item.product.name}
                     className="object-cover"

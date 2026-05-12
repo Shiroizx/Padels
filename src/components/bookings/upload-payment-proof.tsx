@@ -80,10 +80,11 @@ export function UploadPaymentProof({ bookingId }: UploadPaymentProofProps) {
       })
 
       router.refresh()
-    } catch (error: any) {
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Terjadi kesalahan saat upload'
       console.error('Upload error:', error)
       toast.error('Upload gagal', {
-        description: error.message || 'Terjadi kesalahan saat upload',
+        description: errorMessage,
       })
     } finally {
       setIsUploading(false)

@@ -29,7 +29,6 @@ export function CourtCard({ court }: CourtCardProps) {
       <CardHeader className="p-0">
         <div className="relative h-48 w-full bg-gray-200">
           <CourtImage
-            courtId={court.id}
             image={court.image}
             alt={court.name}
             className="object-cover"
@@ -67,7 +66,7 @@ export function CourtCard({ court }: CourtCardProps) {
 
         {court.facilities && court.facilities.length > 0 && (
           <div className="flex flex-wrap gap-1">
-            {court.facilities.slice(0, 3).map((facility, index) => (
+            {court.facilities.slice(0, 3).map((facility: string, index: number) => (
               <Badge key={index} variant="secondary" className="text-xs">
                 {facility}
               </Badge>

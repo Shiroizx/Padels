@@ -1,8 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { Navbar } from '@/components/layouts/navbar'
-import { ProductCard } from '@/components/products/product-card'
+import { ProductsClient } from '@/components/products/products-client'
 import { redirect } from 'next/navigation'
-import { Badge } from '@/components/ui/badge'
 
 export default async function ProductsPage() {
   const supabase = await createClient()
@@ -38,50 +37,13 @@ export default async function ProductsPage() {
     : []
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-purple-50/30">
       <Navbar user={user} />
-      
-      <div className="container mx-auto px-4 py-8">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold">Produk Olahraga</h1>
-          <p className="text-gray-600">Belanja perlengkapan olahraga berkualitas</p>
-        </div>
-
-        {/* Categories */}
-        {categories.length > 0 && (
-          <div className="mb-6 flex flex-wrap gap-2">
-            <Badge variant="outline" className="cursor-pointer">
-              Semua
-            </Badge>
-            {categories.map((category) => (
-              <Badge key={category} variant="outline" className="cursor-pointer">
-                {category}
-              </Badge>
-            ))}
-          </div>
-        )}
-
-        {error && (
-          <div className="rounded-lg bg-red-50 p-4 text-red-600">
-            Error loading products: {error.message}
-          </div>
-        )}
-
-        {!products || products.length === 0 ? (
-          <div className="rounded-lg bg-white p-12 text-center">
-            <p className="text-gray-500">Belum ada produk tersedia</p>
-            <p className="mt-2 text-sm text-gray-400">
-              Silakan hubungi admin untuk menambahkan produk
-            </p>
-          </div>
-        ) : (
-          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-            {products.map((product) => (
-              <ProductCard key={product.id} product={product} />
-            ))}
-          </div>
-        )}
-      </div>
+      <ProductsClient 
+        products={products || []}
+        categories={categories}
+        error={error?.message}
+      />
     </div>
   )
 }

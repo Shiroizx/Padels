@@ -24,15 +24,11 @@ interface BookingSlot {
 }
 
 export function CourtSchedule({ courtId, courtName }: CourtScheduleProps) {
-  const [selectedDate, setSelectedDate] = useState<string>('')
+  const [selectedDate, setSelectedDate] = useState<string>(() => {
+    return new Date().toISOString().split('T')[0]
+  })
   const [schedule, setSchedule] = useState<BookingSlot[]>([])
   const [loading, setLoading] = useState(false)
-
-  // Set default date to today
-  useEffect(() => {
-    const today = new Date().toISOString().split('T')[0]
-    setSelectedDate(today)
-  }, [])
 
   // Fetch schedule when date changes
   useEffect(() => {

@@ -80,8 +80,7 @@ export default async function DeleteCourtPage({ params }: PageProps) {
                 
                 <div className="relative h-48 w-full overflow-hidden rounded-lg bg-gray-200">
                   <CourtImage
-                    courtId={court.id}
-                    images={court.images}
+                    image={court.image || court.images}
                     alt={court.name}
                     className="object-cover"
                   />

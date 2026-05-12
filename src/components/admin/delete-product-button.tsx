@@ -34,10 +34,11 @@ export function DeleteProductButton({ productId, productName }: DeleteProductBut
 
       router.push('/admin/products')
       router.refresh()
-    } catch (error: any) {
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Terjadi kesalahan saat menghapus'
       console.error('Delete error:', error)
       toast.error('Gagal menghapus produk', {
-        description: error.message || 'Terjadi kesalahan saat menghapus',
+        description: errorMessage,
       })
       setIsDeleting(false)
     }

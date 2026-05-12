@@ -34,10 +34,11 @@ export function DeleteCourtButton({ courtId, courtName }: DeleteCourtButtonProps
 
       router.push('/admin/courts')
       router.refresh()
-    } catch (error: any) {
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Terjadi kesalahan saat menghapus'
       console.error('Delete error:', error)
       toast.error('Gagal menghapus lapangan', {
-        description: error.message || 'Terjadi kesalahan saat menghapus',
+        description: errorMessage,
       })
       setIsDeleting(false)
     }

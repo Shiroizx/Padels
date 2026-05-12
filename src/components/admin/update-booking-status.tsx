@@ -38,10 +38,11 @@ export function UpdateBookingStatus({ bookingId, currentStatus }: UpdateBookingS
 
       toast.success('Status booking berhasil diupdate!')
       router.refresh()
-    } catch (error: any) {
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Terjadi kesalahan saat update status'
       console.error('Update error:', error)
       toast.error('Update gagal', {
-        description: error.message || 'Terjadi kesalahan saat update status',
+        description: errorMessage,
       })
     } finally {
       setIsUpdating(false)
@@ -52,7 +53,7 @@ export function UpdateBookingStatus({ bookingId, currentStatus }: UpdateBookingS
     <div className="space-y-4">
       <div className="space-y-2">
         <Label htmlFor="status">Status Booking</Label>
-        <Select value={status} onValueChange={setStatus}>
+        <Select value={status} onValueChange={(value) => value && setStatus(value)}>
           <SelectTrigger>
             <SelectValue placeholder="Pilih status" />
           </SelectTrigger>

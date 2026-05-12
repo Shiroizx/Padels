@@ -36,7 +36,14 @@ export function ProductCard({ product }: ProductCardProps) {
       return
     }
 
-    addItem(product, 1)
+    // Create a product object that matches the Product type from types/index.ts
+    const productForCart = {
+      ...product,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    }
+
+    addItem(productForCart, 1)
     toast.success('Ditambahkan ke keranjang', {
       description: `${product.name} berhasil ditambahkan`,
     })
@@ -47,7 +54,6 @@ export function ProductCard({ product }: ProductCardProps) {
       <CardHeader className="p-0">
         <div className="relative h-48 w-full bg-gray-200">
           <ProductImage
-            productId={product.id}
             image={product.image}
             alt={product.name}
             className="object-cover"

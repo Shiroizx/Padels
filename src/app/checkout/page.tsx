@@ -1,7 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { Navbar } from '@/components/layouts/navbar'
 import { redirect } from 'next/navigation'
-import { CheckoutForm } from '@/components/checkout/checkout-form'
+import { CheckoutClient } from '@/components/checkout/checkout-client'
 
 export default async function CheckoutPage() {
   const supabase = await createClient()
@@ -24,14 +24,37 @@ export default async function CheckoutPage() {
     redirect('/login')
   }
 
-  return (
-    <div className="min-h-screen bg-gray-50">
-      <Navbar user={user} />
+  // Load payment methods
+  const { data: paymentMethods } = await supabase
+    .from('payment_methods')
+    .select('*')
+    .eq('is_active', true)
+    .order('display_order', { ascending: true })
+
+  // Generate public URLs for QR codes
+  const paymentMethodsWithUrls = paymentMethods?.map(method => {
+    if (method.qr_code_image) {
+      const { data: { publicUrl } } = supabase.storage
+        .from('qr-codes')
+        .getPublicUrl(method.qr_code_image)
       
-      <div className="container mx-auto px-4 py-8">
-        <h1 className="mb-6 text-3xl font-bold">Checkout</h1>
-        <CheckoutForm userId={user.id} userEmail={user.email} userName={user.name} />
-      </div>
+      return {
+        ...method,
+        qr_code_image: publicUrl
+      }
+    }
+    return method
+  }) || []
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-50">
+      <Navbar user={user} />
+      <CheckoutClient 
+        userId={user.id} 
+        userEmail={user.email} 
+        userName={user.name}
+        paymentMethods={paymentMethodsWithUrls}
+      />
     </div>
   )
 }

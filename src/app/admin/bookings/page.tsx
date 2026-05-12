@@ -14,9 +14,92 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { formatCurrency } from '@/lib/utils/currency'
 import { formatDate, formatTime } from '@/lib/utils/date'
+import { getBookingStatus } from '@/lib/utils/booking'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { ArrowLeft, Calendar, Eye } from 'lucide-react'
+
+interface Booking {
+  id: string
+  booking_date: string
+  start_time: string
+  end_time: string
+  price: number
+  payment_method: string
+  status: string
+  users?: { name: string; email: string } | null
+  courts?: { name: string } | null
+}
+
+// Move BookingTable outside component
+const BookingTable = ({ bookings, getStatusBadge, getPaymentMethodLabel }: { 
+  bookings: Booking[]
+  getStatusBadge: (booking: Booking) => { label: string; variant: 'secondary' | 'default' | 'destructive' }
+  getPaymentMethodLabel: (method: string) => string
+}) => (
+  <Table>
+    <TableHeader>
+      <TableRow>
+        <TableHead>ID</TableHead>
+        <TableHead>Tanggal</TableHead>
+        <TableHead>Waktu</TableHead>
+        <TableHead>Lapangan</TableHead>
+        <TableHead>User</TableHead>
+        <TableHead>Harga</TableHead>
+        <TableHead>Pembayaran</TableHead>
+        <TableHead>Status</TableHead>
+        <TableHead>Aksi</TableHead>
+      </TableRow>
+    </TableHeader>
+    <TableBody>
+      {bookings.length === 0 ? (
+        <TableRow>
+          <TableCell colSpan={9} className="text-center text-gray-500">
+            Tidak ada booking
+          </TableCell>
+        </TableRow>
+      ) : (
+        bookings.map((booking) => {
+          const statusBadge = getStatusBadge(booking)
+          return (
+            <TableRow key={booking.id}>
+              <TableCell className="font-medium">#{booking.id}</TableCell>
+              <TableCell>{formatDate(booking.booking_date)}</TableCell>
+              <TableCell>
+                {formatTime(booking.start_time)} - {formatTime(booking.end_time)}
+              </TableCell>
+              <TableCell>{booking.courts?.name || '-'}</TableCell>
+              <TableCell>
+                <div>
+                  <p className="font-medium">{booking.users?.name || '-'}</p>
+                  <p className="text-xs text-gray-500">{booking.users?.email || '-'}</p>
+                </div>
+              </TableCell>
+              <TableCell className="font-semibold">
+                {formatCurrency(booking.price)}
+              </TableCell>
+              <TableCell>
+                <Badge variant="outline">
+                  {getPaymentMethodLabel(booking.payment_method)}
+                </Badge>
+              </TableCell>
+              <TableCell>
+                <Badge variant={statusBadge.variant}>{statusBadge.label}</Badge>
+              </TableCell>
+              <TableCell>
+                <Link href={`/admin/bookings/${booking.id}`}>
+                  <Button variant="ghost" size="sm">
+                    <Eye className="h-4 w-4" />
+                  </Button>
+                </Link>
+              </TableCell>
+            </TableRow>
+          )
+        })
+      )}
+    </TableBody>
+  </Table>
+)
 
 export default async function AdminBookingsPage() {
   const supabase = await createClient()
@@ -54,14 +137,21 @@ export default async function AdminBookingsPage() {
     console.error('Bookings query error:', bookingsError)
   }
 
-  const getStatusBadge = (status: string) => {
-    const statusConfig = {
-      pending: { label: 'Pending', variant: 'secondary' as const },
-      confirmed: { label: 'Confirmed', variant: 'default' as const },
-      cancelled: { label: 'Cancelled', variant: 'destructive' as const },
-      completed: { label: 'Completed', variant: 'default' as const },
+  const getStatusBadge = (booking: Booking) => {
+    const bookingStatus = getBookingStatus(booking.booking_date, booking.start_time, booking.end_time, booking.status)
+    
+    const variantMap = {
+      green: 'default' as const,
+      blue: 'default' as const,
+      yellow: 'secondary' as const,
+      red: 'destructive' as const,
+      gray: 'secondary' as const,
     }
-    return statusConfig[status as keyof typeof statusConfig] || statusConfig.pending
+
+    return {
+      label: bookingStatus.label,
+      variant: variantMap[bookingStatus.color as keyof typeof variantMap],
+    }
   }
 
   const getPaymentMethodLabel = (method: string) => {
@@ -79,71 +169,6 @@ export default async function AdminBookingsPage() {
   const confirmedBookings = bookings?.filter((b) => b.status === 'confirmed') || []
   const completedBookings = bookings?.filter((b) => b.status === 'completed') || []
   const cancelledBookings = bookings?.filter((b) => b.status === 'cancelled') || []
-
-  const BookingTable = ({ bookings }: { bookings: any[] }) => (
-    <Table>
-      <TableHeader>
-        <TableRow>
-          <TableHead>ID</TableHead>
-          <TableHead>Tanggal</TableHead>
-          <TableHead>Waktu</TableHead>
-          <TableHead>Lapangan</TableHead>
-          <TableHead>User</TableHead>
-          <TableHead>Harga</TableHead>
-          <TableHead>Pembayaran</TableHead>
-          <TableHead>Status</TableHead>
-          <TableHead>Aksi</TableHead>
-        </TableRow>
-      </TableHeader>
-      <TableBody>
-        {bookings.length === 0 ? (
-          <TableRow>
-            <TableCell colSpan={9} className="text-center text-gray-500">
-              Tidak ada booking
-            </TableCell>
-          </TableRow>
-        ) : (
-          bookings.map((booking: any) => {
-            const statusBadge = getStatusBadge(booking.status)
-            return (
-              <TableRow key={booking.id}>
-                <TableCell className="font-medium">#{booking.id}</TableCell>
-                <TableCell>{formatDate(booking.booking_date)}</TableCell>
-                <TableCell>
-                  {formatTime(booking.start_time)} - {formatTime(booking.end_time)}
-                </TableCell>
-                <TableCell>{booking.courts?.name || '-'}</TableCell>
-                <TableCell>
-                  <div>
-                    <p className="font-medium">{booking.users?.name || '-'}</p>
-                    <p className="text-xs text-gray-500">{booking.users?.email || '-'}</p>
-                  </div>
-                </TableCell>
-                <TableCell className="font-semibold">
-                  {formatCurrency(booking.price)}
-                </TableCell>
-                <TableCell>
-                  <Badge variant="outline">
-                    {getPaymentMethodLabel(booking.payment_method)}
-                  </Badge>
-                </TableCell>
-                <TableCell>
-                  <Badge variant={statusBadge.variant}>{statusBadge.label}</Badge>
-                </TableCell>
-                <TableCell>
-                  <Link href={`/admin/bookings/${booking.id}`}>
-                    <Button variant="ghost" size="sm">
-                      <Eye className="h-4 w-4" />
-                    </Button>
-                  </Link>
-                </TableCell>
-              </TableRow>
-            )
-          })
-        )}
-      </TableBody>
-    </Table>
-  )
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -189,23 +214,23 @@ export default async function AdminBookingsPage() {
               </TabsList>
 
               <TabsContent value="all" className="mt-4">
-                <BookingTable bookings={bookings || []} />
+                <BookingTable bookings={bookings || []} getStatusBadge={getStatusBadge} getPaymentMethodLabel={getPaymentMethodLabel} />
               </TabsContent>
 
               <TabsContent value="pending" className="mt-4">
-                <BookingTable bookings={pendingBookings} />
+                <BookingTable bookings={pendingBookings} getStatusBadge={getStatusBadge} getPaymentMethodLabel={getPaymentMethodLabel} />
               </TabsContent>
 
               <TabsContent value="confirmed" className="mt-4">
-                <BookingTable bookings={confirmedBookings} />
+                <BookingTable bookings={confirmedBookings} getStatusBadge={getStatusBadge} getPaymentMethodLabel={getPaymentMethodLabel} />
               </TabsContent>
 
               <TabsContent value="completed" className="mt-4">
-                <BookingTable bookings={completedBookings} />
+                <BookingTable bookings={completedBookings} getStatusBadge={getStatusBadge} getPaymentMethodLabel={getPaymentMethodLabel} />
               </TabsContent>
 
               <TabsContent value="cancelled" className="mt-4">
-                <BookingTable bookings={cancelledBookings} />
+                <BookingTable bookings={cancelledBookings} getStatusBadge={getStatusBadge} getPaymentMethodLabel={getPaymentMethodLabel} />
               </TabsContent>
             </Tabs>
           </CardContent>

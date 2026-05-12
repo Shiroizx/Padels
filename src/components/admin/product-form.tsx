@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -19,9 +19,20 @@ import Image from 'next/image'
 
 type ProductFormData = z.infer<typeof productSchema>
 
+interface Product {
+  id: number
+  name: string
+  description?: string
+  price: number
+  stock: number
+  category?: string
+  is_available: boolean
+  image?: string
+}
+
 interface ProductFormProps {
   mode: 'create' | 'edit'
-  product?: any
+  product?: Product
 }
 
 export function ProductForm({ mode, product }: ProductFormProps) {
@@ -29,9 +40,8 @@ export function ProductForm({ mode, product }: ProductFormProps) {
   const supabase = createClient()
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [imageFile, setImageFile] = useState<File | null>(null)
-  const [imagePreview, setImagePreview] = useState<string | null>(
-    product?.image ? `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/product-images/${product.image}` : null
-  )
+  const [imagePreview, setImagePreview] = useState<string | null>(null)
+  const [existingImageUrl, setExistingImageUrl] = useState<string | null>(null)
   const [isUploading, setIsUploading] = useState(false)
 
   const {
@@ -61,6 +71,26 @@ export function ProductForm({ mode, product }: ProductFormProps) {
 
   const isAvailable = watch('is_available')
   const category = watch('category')
+
+  // Load existing image URL
+  useEffect(() => {
+    async function loadExistingImage() {
+      if (mode === 'edit' && product?.image) {
+        try {
+          const { data, error } = await supabase.storage
+            .from('product-images')
+            .createSignedUrl(product.image, 3600)
+          
+          if (!error && data?.signedUrl) {
+            setExistingImageUrl(data.signedUrl)
+          }
+        } catch (error) {
+          console.error('Failed to load existing image:', error)
+        }
+      }
+    }
+    loadExistingImage()
+  }, [mode, product?.image, supabase])
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -110,10 +140,11 @@ export function ProductForm({ mode, product }: ProductFormProps) {
       if (uploadError) throw uploadError
 
       return fileName
-    } catch (error: any) {
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error'
       console.error('Upload error:', error)
       toast.error('Gagal upload gambar', {
-        description: error.message,
+        description: errorMessage,
       })
       return null
     } finally {
@@ -157,9 +188,9 @@ export function ProductForm({ mode, product }: ProductFormProps) {
         toast.success('Produk berhasil ditambahkan!')
       } else {
         // Upload new image if any
-        let imagePath = product.image
+        let imagePath = product?.image
         
-        if (imageFile) {
+        if (imageFile && product) {
           const newImagePath = await uploadImage(product.id)
           if (newImagePath) {
             imagePath = newImagePath
@@ -167,6 +198,8 @@ export function ProductForm({ mode, product }: ProductFormProps) {
         }
 
         // Update product
+        if (!product) throw new Error('Product not found')
+        
         const { error } = await supabase
           .from('products')
           .update({
@@ -187,10 +220,11 @@ export function ProductForm({ mode, product }: ProductFormProps) {
 
       router.push('/admin/products')
       router.refresh()
-    } catch (error: any) {
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Terjadi kesalahan'
       console.error('Submit error:', error)
       toast.error(mode === 'create' ? 'Gagal menambahkan produk' : 'Gagal mengupdate produk', {
-        description: error.message || 'Terjadi kesalahan',
+        description: errorMessage,
       })
     } finally {
       setIsSubmitting(false)
@@ -219,8 +253,8 @@ export function ProductForm({ mode, product }: ProductFormProps) {
           <div className="space-y-2">
             <Label htmlFor="category">Kategori</Label>
             <Select
-              value={category}
-              onValueChange={(value) => setValue('category', value)}
+              value={category || undefined}
+              onValueChange={(value) => setValue('category', value || '')}
             >
               <SelectTrigger>
                 <SelectValue placeholder="Pilih kategori" />
@@ -292,23 +326,42 @@ export function ProductForm({ mode, product }: ProductFormProps) {
               Upload gambar produk (max 5MB, format: JPG, PNG, WebP)
             </p>
             
-            {/* Image Preview */}
+            {/* Existing Image */}
+            {mode === 'edit' && existingImageUrl && !imagePreview && (
+              <div className="mt-4">
+                <p className="mb-2 text-sm font-medium">Gambar Saat Ini:</p>
+                <div className="relative aspect-video w-full max-w-md overflow-hidden rounded-lg border">
+                  <Image
+                    src={existingImageUrl}
+                    alt="Current product image"
+                    fill
+                    className="object-cover"
+                    unoptimized
+                  />
+                </div>
+              </div>
+            )}
+            
+            {/* New Image Preview */}
             {imagePreview && (
-              <div className="relative mt-4 aspect-video w-full max-w-md overflow-hidden rounded-lg border">
-                <Image
-                  src={imagePreview}
-                  alt="Preview"
-                  fill
-                  className="object-cover"
-                />
-                <button
-                  type="button"
-                  onClick={removeImage}
-                  className="absolute right-2 top-2 rounded-full bg-red-600 p-1 text-white hover:bg-red-700"
-                  disabled={isSubmitting || isUploading}
-                >
-                  <X className="h-4 w-4" />
-                </button>
+              <div className="mt-4">
+                <p className="mb-2 text-sm font-medium">Gambar Baru:</p>
+                <div className="relative aspect-video w-full max-w-md overflow-hidden rounded-lg border">
+                  <Image
+                    src={imagePreview}
+                    alt="Preview"
+                    fill
+                    className="object-cover"
+                  />
+                  <button
+                    type="button"
+                    onClick={removeImage}
+                    className="absolute right-2 top-2 rounded-full bg-red-600 p-1 text-white hover:bg-red-700"
+                    disabled={isSubmitting || isUploading}
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
               </div>
             )}
           </div>

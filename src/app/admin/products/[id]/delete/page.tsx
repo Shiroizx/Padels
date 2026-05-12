@@ -80,7 +80,6 @@ export default async function DeleteProductPage({ params }: PageProps) {
                 
                 <div className="relative h-48 w-full overflow-hidden rounded-lg bg-gray-200">
                   <ProductImage
-                    productId={product.id}
                     image={product.image}
                     alt={product.name}
                     className="object-cover"

@@ -18,6 +18,102 @@ import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { ArrowLeft, Package, Eye } from 'lucide-react'
 
+interface OrderItem {
+  id: string
+  quantity: number
+  price: number
+}
+
+interface Order {
+  id: string
+  created_at: string
+  customer_name: string
+  total_amount: number
+  payment_method: string
+  payment_proof: string | null
+  status: string
+  users?: { email: string } | null
+  order_items?: OrderItem[]
+}
+
+// Move OrderTable outside component
+const OrderTable = ({ orders, getStatusBadge, getPaymentMethodLabel }: { 
+  orders: Order[]
+  getStatusBadge: (status: string) => { label: string; variant: 'secondary' | 'default' | 'destructive' }
+  getPaymentMethodLabel: (method: string) => string
+}) => (
+  <Table>
+    <TableHeader>
+      <TableRow>
+        <TableHead>ID</TableHead>
+        <TableHead>Tanggal</TableHead>
+        <TableHead>Customer</TableHead>
+        <TableHead>Items</TableHead>
+        <TableHead>Total</TableHead>
+        <TableHead>Pembayaran</TableHead>
+        <TableHead>Bukti</TableHead>
+        <TableHead>Status</TableHead>
+        <TableHead>Aksi</TableHead>
+      </TableRow>
+    </TableHeader>
+    <TableBody>
+      {orders.length === 0 ? (
+        <TableRow>
+          <TableCell colSpan={9} className="text-center text-gray-500">
+            Tidak ada order
+          </TableCell>
+        </TableRow>
+      ) : (
+        orders.map((order) => {
+          const statusBadge = getStatusBadge(order.status)
+          const itemCount = order.order_items?.reduce(
+            (sum, item) => sum + item.quantity,
+            0
+          ) || 0
+          return (
+            <TableRow key={order.id}>
+              <TableCell className="font-medium">#{order.id}</TableCell>
+              <TableCell>{formatDate(order.created_at)}</TableCell>
+              <TableCell>
+                <div>
+                  <p className="font-medium">{order.customer_name}</p>
+                  <p className="text-xs text-gray-500">{order.users?.email || '-'}</p>
+                </div>
+              </TableCell>
+              <TableCell>{itemCount} item</TableCell>
+              <TableCell className="font-semibold">
+                {formatCurrency(order.total_amount)}
+              </TableCell>
+              <TableCell>
+                <Badge variant="outline">
+                  {getPaymentMethodLabel(order.payment_method)}
+                </Badge>
+              </TableCell>
+              <TableCell>
+                {order.payment_proof ? (
+                  <Badge className="bg-green-600">✓</Badge>
+                ) : (
+                  <Badge variant="secondary">-</Badge>
+                )}
+              </TableCell>
+              <TableCell>
+                <Badge variant={statusBadge.variant}>{statusBadge.label}</Badge>
+              </TableCell>
+              <TableCell>
+                <Link href={`/admin/orders/${order.id}`}>
+                  <Button variant="ghost" size="sm">
+                    <Eye className="h-4 w-4" />
+                  </Button>
+                </Link>
+              </TableCell>
+            </TableRow>
+          )
+        })
+      )}
+    </TableBody>
+  </Table>
+)
+
 export default async function AdminOrdersPage() {
   const supabase = await createClient()
 
@@ -83,79 +179,6 @@ export default async function AdminOrdersPage() {
   const deliveredOrders = orders?.filter((o) => o.status === 'delivered') || []
   const cancelledOrders = orders?.filter((o) => o.status === 'cancelled') || []
 
-  const OrderTable = ({ orders }: { orders: any[] }) => (
-    <Table>
-      <TableHeader>
-        <TableRow>
-          <TableHead>ID</TableHead>
-          <TableHead>Tanggal</TableHead>
-          <TableHead>Customer</TableHead>
-          <TableHead>Items</TableHead>
-          <TableHead>Total</TableHead>
-          <TableHead>Pembayaran</TableHead>
-          <TableHead>Bukti</TableHead>
-          <TableHead>Status</TableHead>
-          <TableHead>Aksi</TableHead>
-        </TableRow>
-      </TableHeader>
-      <TableBody>
-        {orders.length === 0 ? (
-          <TableRow>
-            <TableCell colSpan={9} className="text-center text-gray-500">
-              Tidak ada order
-            </TableCell>
-          </TableRow>
-        ) : (
-          orders.map((order: any) => {
-            const statusBadge = getStatusBadge(order.status)
-            const itemCount = order.order_items?.reduce(
-              (sum: number, item: any) => sum + item.quantity,
-              0
-            ) || 0
-            return (
-              <TableRow key={order.id}>
-                <TableCell className="font-medium">#{order.id}</TableCell>
-                <TableCell>{formatDate(order.created_at)}</TableCell>
-                <TableCell>
-                  <div>
-                    <p className="font-medium">{order.customer_name}</p>
-                    <p className="text-xs text-gray-500">{order.users?.email || '-'}</p>
-                  </div>
-                </TableCell>
-                <TableCell>{itemCount} item</TableCell>
-                <TableCell className="font-semibold">
-                  {formatCurrency(order.total_amount)}
-                </TableCell>
-                <TableCell>
-                  <Badge variant="outline">
-                    {getPaymentMethodLabel(order.payment_method)}
-                  </Badge>
-                </TableCell>
-                <TableCell>
-                  {order.payment_proof ? (
-                    <Badge className="bg-green-600">✓</Badge>
-                  ) : (
-                    <Badge variant="secondary">-</Badge>
-                  )}
-                </TableCell>
-                <TableCell>
-                  <Badge variant={statusBadge.variant}>{statusBadge.label}</Badge>
-                </TableCell>
-                <TableCell>
-                  <Link href={`/admin/orders/${order.id}`}>
-                    <Button variant="ghost" size="sm">
-                      <Eye className="h-4 w-4" />
-                    </Button>
-                  </Link>
-                </TableCell>
-              </TableRow>
-            )
-          })
-        )}
-      </TableBody>
-    </Table>
-  )
-
   return (
     <div className="min-h-screen bg-gray-50">
       <Navbar user={user} />
@@ -206,31 +229,31 @@ export default async function AdminOrdersPage() {
               </TabsList>
 
               <TabsContent value="all" className="mt-4">
-                <OrderTable orders={orders || []} />
+                <OrderTable orders={orders || []} getStatusBadge={getStatusBadge} getPaymentMethodLabel={getPaymentMethodLabel} />
               </TabsContent>
 
               <TabsContent value="pending" className="mt-4">
-                <OrderTable orders={pendingOrders} />
+                <OrderTable orders={pendingOrders} getStatusBadge={getStatusBadge} getPaymentMethodLabel={getPaymentMethodLabel} />
               </TabsContent>
 
               <TabsContent value="paid" className="mt-4">
-                <OrderTable orders={paidOrders} />
+                <OrderTable orders={paidOrders} getStatusBadge={getStatusBadge} getPaymentMethodLabel={getPaymentMethodLabel} />
               </TabsContent>
 
               <TabsContent value="processing" className="mt-4">
-                <OrderTable orders={processingOrders} />
+                <OrderTable orders={processingOrders} getStatusBadge={getStatusBadge} getPaymentMethodLabel={getPaymentMethodLabel} />
               </TabsContent>
 
               <TabsContent value="shipped" className="mt-4">
-                <OrderTable orders={shippedOrders} />
+                <OrderTable orders={shippedOrders} getStatusBadge={getStatusBadge} getPaymentMethodLabel={getPaymentMethodLabel} />
               </TabsContent>
 
               <TabsContent value="delivered" className="mt-4">
-                <OrderTable orders={deliveredOrders} />
+                <OrderTable orders={deliveredOrders} getStatusBadge={getStatusBadge} getPaymentMethodLabel={getPaymentMethodLabel} />
               </TabsContent>
 
               <TabsContent value="cancelled" className="mt-4">
-                <OrderTable orders={cancelledOrders} />
+                <OrderTable orders={cancelledOrders} getStatusBadge={getStatusBadge} getPaymentMethodLabel={getPaymentMethodLabel} />
               </TabsContent>
             </Tabs>
           </CardContent>

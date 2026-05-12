@@ -12,9 +12,28 @@ import { toast } from 'sonner'
 import { CheckCircle, XCircle, Loader2, Calendar, Package, User } from 'lucide-react'
 import Image from 'next/image'
 
+interface OrderItem {
+  quantity: number
+}
+
+interface PaymentData {
+  id: string
+  created_at?: string
+  users?: { name?: string; email?: string } | null
+  courts?: { name?: string } | null
+  booking_date?: string
+  start_time?: string
+  end_time?: string
+  price?: number
+  customer_name?: string
+  customer_address?: string
+  total_amount?: number
+  order_items?: OrderItem[]
+}
+
 interface PaymentApprovalCardProps {
   type: 'booking' | 'order'
-  data: any
+  data: PaymentData
   paymentProofUrl: string | null
 }
 
@@ -42,10 +61,11 @@ export function PaymentApprovalCard({ type, data, paymentProofUrl }: PaymentAppr
       })
 
       router.refresh()
-    } catch (error: any) {
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Terjadi kesalahan saat approve pembayaran'
       console.error('Approve error:', error)
       toast.error('Approve gagal', {
-        description: error.message || 'Terjadi kesalahan saat approve pembayaran',
+        description: errorMessage,
       })
     } finally {
       setIsProcessing(false)
@@ -73,10 +93,11 @@ export function PaymentApprovalCard({ type, data, paymentProofUrl }: PaymentAppr
       })
 
       router.refresh()
-    } catch (error: any) {
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Terjadi kesalahan saat reject pembayaran'
       console.error('Reject error:', error)
       toast.error('Reject gagal', {
-        description: error.message || 'Terjadi kesalahan saat reject pembayaran',
+        description: errorMessage,
       })
     } finally {
       setIsProcessing(false)
@@ -102,7 +123,7 @@ export function PaymentApprovalCard({ type, data, paymentProofUrl }: PaymentAppr
               )}
             </CardTitle>
             <p className="text-sm text-gray-600">
-              {formatDate(data.created_at)}
+              {data.created_at ? formatDate(data.created_at) : '-'}
             </p>
           </div>
           <Badge variant="secondary">Pending</Badge>
@@ -114,9 +135,11 @@ export function PaymentApprovalCard({ type, data, paymentProofUrl }: PaymentAppr
         <div className="space-y-2 border-b pb-4">
           <div className="flex items-center gap-2 text-sm">
             <User className="h-4 w-4 text-gray-400" />
-            <span className="font-medium">{data.users?.name || data.customer_name}</span>
+            <span className="font-medium">
+              {data.customer_name || data.users?.name || '-'}
+            </span>
           </div>
-          <p className="text-sm text-gray-600">{data.users?.email}</p>
+          <p className="text-sm text-gray-600">{data.users?.email || '-'}</p>
         </div>
 
         {/* Details */}
@@ -124,22 +147,22 @@ export function PaymentApprovalCard({ type, data, paymentProofUrl }: PaymentAppr
           {type === 'booking' ? (
             <>
               <p className="text-sm">
-                <strong>Lapangan:</strong> {data.courts?.name}
+                <strong>Lapangan:</strong> {data.courts?.name || '-'}
               </p>
               <p className="text-sm">
-                <strong>Tanggal:</strong> {formatDate(data.booking_date)}
+                <strong>Tanggal:</strong> {data.booking_date ? formatDate(data.booking_date) : '-'}
               </p>
               <p className="text-sm">
-                <strong>Waktu:</strong> {formatTime(data.start_time)} - {formatTime(data.end_time)}
+                <strong>Waktu:</strong> {data.start_time && data.end_time ? `${formatTime(data.start_time)} - ${formatTime(data.end_time)}` : '-'}
               </p>
             </>
           ) : (
             <>
               <p className="text-sm">
-                <strong>Items:</strong> {data.order_items?.reduce((sum: number, item: any) => sum + item.quantity, 0)} produk
+                <strong>Items:</strong> {data.order_items?.reduce((sum, item) => sum + item.quantity, 0) || 0} produk
               </p>
               <p className="text-sm">
-                <strong>Alamat:</strong> {data.customer_address}
+                <strong>Alamat:</strong> {data.customer_address || '-'}
               </p>
             </>
           )}
@@ -149,7 +172,7 @@ export function PaymentApprovalCard({ type, data, paymentProofUrl }: PaymentAppr
         <div className="rounded-lg bg-green-50 p-3">
           <div className="text-sm text-gray-600">Total</div>
           <div className="text-2xl font-bold text-green-600">
-            {formatCurrency(type === 'booking' ? data.price : data.total_amount)}
+            {formatCurrency(type === 'booking' ? (data.price || 0) : (data.total_amount || 0))}
           </div>
         </div>
 

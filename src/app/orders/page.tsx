@@ -9,6 +9,26 @@ import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { Package, Calendar, CreditCard, Eye } from 'lucide-react'
 
+interface OrderItem {
+  id: string
+  quantity: number
+  price: number
+  products?: {
+    id: string
+    name: string
+    image: string
+  } | null
+}
+
+interface Order {
+  id: string
+  created_at: string
+  status: string
+  payment_method: string
+  total_amount: number
+  order_items?: OrderItem[]
+}
+
 export default async function OrdersPage() {
   const supabase = await createClient()
 
@@ -98,10 +118,10 @@ export default async function OrdersPage() {
           </Card>
         ) : (
           <div className="space-y-4">
-            {orders.map((order) => {
+            {orders.map((order: Order) => {
               const statusBadge = getStatusBadge(order.status)
               const itemCount = order.order_items?.reduce(
-                (sum: number, item: any) => sum + item.quantity,
+                (sum: number, item: OrderItem) => sum + item.quantity,
                 0
               ) || 0
 
@@ -134,7 +154,7 @@ export default async function OrdersPage() {
                     <div className="space-y-4">
                       {/* Order Items Preview */}
                       <div className="space-y-2">
-                        {order.order_items?.slice(0, 2).map((item: any) => (
+                        {order.order_items?.slice(0, 2).map((item: OrderItem) => (
                           <div key={item.id} className="flex items-center gap-3 text-sm">
                             <Package className="h-4 w-4 text-gray-400" />
                             <span className="flex-1">

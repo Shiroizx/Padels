@@ -9,7 +9,7 @@ import { redirect, notFound } from 'next/navigation'
 import Link from 'next/link'
 import { ProductImage } from '@/components/shared/product-image'
 import { UpdateOrderStatus } from '@/components/admin/update-order-status'
-import { ArrowLeft, User, Phone, MapPin, CreditCard, FileText, Package } from 'lucide-react'
+import { ArrowLeft, User, Phone, MapPin, CreditCard, FileText } from 'lucide-react'
 import Image from 'next/image'
 
 interface PageProps {
@@ -99,8 +99,15 @@ export default async function AdminOrderDetailPage({ params }: PageProps) {
   }
 
   const statusBadge = getStatusBadge(order.status)
+  
+  interface OrderItem {
+    id: string
+    quantity: number
+    price: number
+  }
+  
   const itemCount = order.order_items?.reduce(
-    (sum: number, item: any) => sum + item.quantity,
+    (sum: number, item: OrderItem) => sum + item.quantity,
     0
   ) || 0
 
@@ -137,14 +144,13 @@ export default async function AdminOrderDetailPage({ params }: PageProps) {
                 <CardTitle>Produk Pesanan ({itemCount} item)</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                {order.order_items?.map((item: any) => (
+                {order.order_items?.map((item: { id: string; quantity: number; price: number; products?: { id: string; name: string; image: string; category: string } | null }) => (
                   <div
                     key={item.id}
                     className="flex gap-4 border-b pb-4 last:border-b-0"
                   >
                     <div className="relative h-20 w-20 flex-shrink-0 overflow-hidden rounded-lg bg-gray-200">
                       <ProductImage
-                        productId={item.products?.id}
                         image={item.products?.image}
                         alt={item.products?.name || 'Produk'}
                         className="object-cover"

@@ -1,5 +1,6 @@
 'use client'
 
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
@@ -19,7 +20,22 @@ interface NavbarProps {
 export function Navbar({ user }: NavbarProps) {
   const router = useRouter()
   const supabase = createClient()
-  const itemCount = useCartStore((state) => state.getItemCount())
+  const [itemCount, setItemCount] = useState(0)
+  const [isMounted, setIsMounted] = useState(false)
+
+  // Only access cart store on client side to avoid hydration mismatch
+  useEffect(() => {
+    setIsMounted(true)
+    const count = useCartStore.getState().getItemCount()
+    setItemCount(count)
+
+    // Subscribe to cart changes
+    const unsubscribe = useCartStore.subscribe((state) => {
+      setItemCount(state.getItemCount())
+    })
+
+    return () => unsubscribe()
+  }, [])
 
   const handleLogout = async () => {
     try {
@@ -27,7 +43,7 @@ export function Navbar({ user }: NavbarProps) {
       toast.success('Logout berhasil')
       router.push('/login')
       router.refresh()
-    } catch (error) {
+    } catch {
       toast.error('Logout gagal')
     }
   }
@@ -53,7 +69,7 @@ export function Navbar({ user }: NavbarProps) {
                   <Link href="/cart">
                     <Button variant="ghost" className="relative">
                       <ShoppingCart className="h-5 w-5" />
-                      {itemCount > 0 && (
+                      {isMounted && itemCount > 0 && (
                         <span className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-green-600 text-xs text-white">
                           {itemCount}
                         </span>

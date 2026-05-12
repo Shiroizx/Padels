@@ -80,15 +80,15 @@ export default async function AdminProductsPage() {
           </Card>
         ) : (
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-            {products.map((product) => (
+            {products.map((product, index) => (
               <Card key={product.id}>
                 <CardHeader className="p-0">
                   <div className="relative h-48 w-full overflow-hidden rounded-t-lg bg-gray-200">
                     <ProductImage
-                      productId={product.id}
                       image={product.image}
                       alt={product.name}
                       className="object-cover"
+                      priority={index < 4}
                     />
                   </div>
                 </CardHeader>

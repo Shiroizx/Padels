@@ -142,7 +142,7 @@ export default async function AdminPaymentsPage() {
                   </div>
                 ) : (
                   <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-                    {bookingsWithUrls.map((booking: any) => (
+                    {bookingsWithUrls.map((booking) => (
                       <PaymentApprovalCard
                         key={booking.id}
                         type="booking"
@@ -161,7 +161,7 @@ export default async function AdminPaymentsPage() {
                   </div>
                 ) : (
                   <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-                    {ordersWithUrls.map((order: any) => (
+                    {ordersWithUrls.map((order) => (
                       <PaymentApprovalCard
                         key={order.id}
                         type="order"

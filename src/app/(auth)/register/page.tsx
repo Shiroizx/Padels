@@ -65,10 +65,11 @@ export default function RegisterPage() {
 
       router.push('/login')
       router.refresh()
-    } catch (error: any) {
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Terjadi kesalahan saat membuat akun'
       console.error('Registration error:', error)
       toast.error('Registrasi gagal', {
-        description: error.message || 'Terjadi kesalahan saat membuat akun',
+        description: errorMessage,
       })
     } finally {
       setIsLoading(false)

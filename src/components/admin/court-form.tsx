@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -19,9 +19,20 @@ import Image from 'next/image'
 
 type CourtFormData = z.infer<typeof courtSchema>
 
+interface Court {
+  id: number
+  name: string
+  description?: string
+  price_per_hour: number
+  location?: string
+  is_available: boolean
+  image?: string
+  images?: string[]
+}
+
 interface CourtFormProps {
   mode: 'create' | 'edit'
-  court?: any
+  court?: Court
 }
 
 export function CourtForm({ mode, court }: CourtFormProps) {
@@ -29,9 +40,8 @@ export function CourtForm({ mode, court }: CourtFormProps) {
   const supabase = createClient()
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [imageFiles, setImageFiles] = useState<File[]>([])
-  const [imagePreviews, setImagePreviews] = useState<string[]>(
-    court?.images || []
-  )
+  const [imagePreviews, setImagePreviews] = useState<string[]>([])
+  const [existingImageUrl, setExistingImageUrl] = useState<string | null>(null)
   const [isUploading, setIsUploading] = useState(false)
 
   const {
@@ -58,6 +68,26 @@ export function CourtForm({ mode, court }: CourtFormProps) {
   })
 
   const isAvailable = watch('is_available')
+
+  // Load existing image URL
+  useEffect(() => {
+    async function loadExistingImage() {
+      if (mode === 'edit' && court?.image) {
+        try {
+          const { data, error } = await supabase.storage
+            .from('court-images')
+            .createSignedUrl(court.image, 3600)
+          
+          if (!error && data?.signedUrl) {
+            setExistingImageUrl(data.signedUrl)
+          }
+        } catch (error) {
+          console.error('Failed to load existing image:', error)
+        }
+      }
+    }
+    loadExistingImage()
+  }, [mode, court?.image, supabase])
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || [])
@@ -119,10 +149,11 @@ export function CourtForm({ mode, court }: CourtFormProps) {
       }
 
       return uploadedFilenames
-    } catch (error: any) {
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error'
       console.error('Upload error:', error)
       toast.error('Gagal upload gambar', {
-        description: error.message,
+        description: errorMessage,
       })
       return []
     } finally {
@@ -166,9 +197,9 @@ export function CourtForm({ mode, court }: CourtFormProps) {
         toast.success('Lapangan berhasil ditambahkan!')
       } else {
         // Upload new images if any
-        let imageFilename = court.image // Keep existing image
+        let imageFilename = court?.image // Keep existing image
         
-        if (imageFiles.length > 0) {
+        if (imageFiles.length > 0 && court) {
           const uploadedFilenames = await uploadImages(court.id)
           if (uploadedFilenames.length > 0) {
             // Use first uploaded image filename
@@ -177,6 +208,8 @@ export function CourtForm({ mode, court }: CourtFormProps) {
         }
 
         // Update court
+        if (!court) throw new Error('Court not found')
+        
         const { error } = await supabase
           .from('courts')
           .update({
@@ -196,10 +229,11 @@ export function CourtForm({ mode, court }: CourtFormProps) {
 
       router.push('/admin/courts')
       router.refresh()
-    } catch (error: any) {
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Terjadi kesalahan'
       console.error('Submit error:', error)
       toast.error(mode === 'create' ? 'Gagal menambahkan lapangan' : 'Gagal mengupdate lapangan', {
-        description: error.message || 'Terjadi kesalahan',
+        description: errorMessage,
       })
     } finally {
       setIsSubmitting(false)
@@ -277,27 +311,46 @@ export function CourtForm({ mode, court }: CourtFormProps) {
               Upload gambar lapangan (max 5MB per file, format: JPG, PNG, WebP)
             </p>
             
-            {/* Image Previews */}
+            {/* Existing Image */}
+            {mode === 'edit' && existingImageUrl && imagePreviews.length === 0 && (
+              <div className="mt-4">
+                <p className="mb-2 text-sm font-medium">Gambar Saat Ini:</p>
+                <div className="relative aspect-video w-full max-w-md overflow-hidden rounded-lg border">
+                  <Image
+                    src={existingImageUrl}
+                    alt="Current court image"
+                    fill
+                    className="object-cover"
+                    unoptimized
+                  />
+                </div>
+              </div>
+            )}
+            
+            {/* New Image Previews */}
             {imagePreviews.length > 0 && (
-              <div className="mt-4 grid grid-cols-2 gap-4 md:grid-cols-3">
-                {imagePreviews.map((preview, index) => (
-                  <div key={index} className="relative aspect-video overflow-hidden rounded-lg border">
-                    <Image
-                      src={preview}
-                      alt={`Preview ${index + 1}`}
-                      fill
-                      className="object-cover"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => removeImage(index)}
-                      className="absolute right-2 top-2 rounded-full bg-red-600 p-1 text-white hover:bg-red-700"
-                      disabled={isSubmitting || isUploading}
-                    >
-                      <X className="h-4 w-4" />
-                    </button>
-                  </div>
-                ))}
+              <div className="mt-4">
+                <p className="mb-2 text-sm font-medium">Gambar Baru:</p>
+                <div className="grid grid-cols-2 gap-4 md:grid-cols-3">
+                  {imagePreviews.map((preview, index) => (
+                    <div key={index} className="relative aspect-video overflow-hidden rounded-lg border">
+                      <Image
+                        src={preview}
+                        alt={`Preview ${index + 1}`}
+                        fill
+                        className="object-cover"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => removeImage(index)}
+                        className="absolute right-2 top-2 rounded-full bg-red-600 p-1 text-white hover:bg-red-700"
+                        disabled={isSubmitting || isUploading}
+                      >
+                        <X className="h-4 w-4" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
               </div>
             )}
           </div>

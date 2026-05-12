@@ -5,9 +5,10 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { formatCurrency } from '@/lib/utils/currency'
 import { formatDate, formatTime } from '@/lib/utils/date'
+import { getBookingStatus } from '@/lib/utils/booking'
 import { redirect, notFound } from 'next/navigation'
 import Link from 'next/link'
-import { ArrowLeft, User, Calendar, Clock, MapPin, CreditCard, FileText } from 'lucide-react'
+import { ArrowLeft, User, Calendar, Clock, MapPin, CreditCard, FileText, AlertCircle } from 'lucide-react'
 import { UpdateBookingStatus } from '@/components/admin/update-booking-status'
 import Image from 'next/image'
 
@@ -22,67 +23,78 @@ interface PageProps {
 }
 
 export default async function AdminBookingDetailPage({ params }: PageProps) {
-  try {
-    const { id } = await params
-    const supabase = await createClient()
+  const { id } = await params
+  const supabase = await createClient()
 
-    const {
-      data: { user: authUser },
-    } = await supabase.auth.getUser()
+  const {
+    data: { user: authUser },
+  } = await supabase.auth.getUser()
 
-    if (!authUser) {
-      redirect('/login')
-    }
-
-    const { data: user } = await supabase
-      .from('users')
-      .select('*')
-      .eq('id', authUser.id)
-      .single()
-
-    if (!user || user.role !== 'admin') {
-      redirect('/dashboard')
-    }
-
-    // Get booking details
-    const { data: booking, error } = await supabase
-      .from('bookings')
-      .select(`
-        *,
-        users:user_id (name, email),
-        courts:court_id (name, location)
-      `)
-      .eq('id', id)
-      .single()
-
-    if (error) {
-      console.error('Booking fetch error:', error)
-      notFound()
-    }
-    
-    if (!booking) {
-      notFound()
-    }
-
-    // Get payment proof URL if exists (using signed URL for private bucket)
-    let paymentProofUrl = null
-    if (booking.payment_proof) {
-      const { data: signedData } = await supabase.storage
-        .from('payment-proofs')
-        .createSignedUrl(booking.payment_proof, 3600) // 1 hour expiry
-      
-      paymentProofUrl = signedData?.signedUrl
-    }
-
-  const getStatusBadge = (status: string) => {
-    const statusConfig = {
-      pending: { label: 'Pending', variant: 'secondary' as const },
-      confirmed: { label: 'Confirmed', variant: 'default' as const },
-      cancelled: { label: 'Cancelled', variant: 'destructive' as const },
-      completed: { label: 'Completed', variant: 'default' as const },
-    }
-    return statusConfig[status as keyof typeof statusConfig] || statusConfig.pending
+  if (!authUser) {
+    redirect('/login')
   }
+
+  const { data: user } = await supabase
+    .from('users')
+    .select('*')
+    .eq('id', authUser.id)
+    .single()
+
+  if (!user || user.role !== 'admin') {
+    redirect('/dashboard')
+  }
+
+  // Get booking details
+  const { data: booking, error } = await supabase
+    .from('bookings')
+    .select(`
+      *,
+      users:user_id (name, email),
+      courts:court_id (name, location)
+    `)
+    .eq('id', id)
+    .single()
+
+  if (error) {
+    console.error('Booking fetch error:', error)
+    notFound()
+  }
+  
+  if (!booking) {
+    notFound()
+  }
+
+  // Get payment proof URL if exists (using signed URL for private bucket)
+  let paymentProofUrl = null
+  if (booking.payment_proof) {
+    const { data: signedData } = await supabase.storage
+      .from('payment-proofs')
+      .createSignedUrl(booking.payment_proof, 3600) // 1 hour expiry
+    
+    paymentProofUrl = signedData?.signedUrl
+  }
+
+  const getStatusBadge = (booking: { status: string; booking_date: string; start_time: string; end_time: string }) => {
+    const bookingStatus = getBookingStatus(booking.booking_date, booking.start_time, booking.end_time, booking.status)
+    
+    const variantMap = {
+      green: 'default' as const,
+      blue: 'default' as const,
+      yellow: 'secondary' as const,
+      red: 'destructive' as const,
+      gray: 'secondary' as const,
+    }
+
+    return {
+      label: bookingStatus.label,
+      variant: variantMap[bookingStatus.color as keyof typeof variantMap],
+    }
+  }
+
+  const statusBadge = getStatusBadge(booking)
+  const bookingStatus = getBookingStatus(booking.booking_date, booking.start_time, booking.end_time, booking.status)
+  const isExpired = bookingStatus.status === 'expired'
+  const isUpcoming = bookingStatus.status === 'upcoming'
 
   const getPaymentMethodLabel = (method: string) => {
     const methods: Record<string, string> = {
@@ -94,8 +106,6 @@ export default async function AdminBookingDetailPage({ params }: PageProps) {
     }
     return methods[method] || method
   }
-
-  const statusBadge = getStatusBadge(booking.status)
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -124,6 +134,39 @@ export default async function AdminBookingDetailPage({ params }: PageProps) {
         <div className="grid gap-6 lg:grid-cols-3">
           {/* Booking Details */}
           <div className="lg:col-span-2 space-y-6">
+            {/* Expired/Upcoming Alert */}
+            {isExpired && (
+              <Card className="border-2 border-gray-300 bg-gray-50">
+                <CardContent className="pt-6">
+                  <div className="flex items-start gap-3">
+                    <AlertCircle className="h-6 w-6 mt-0.5 flex-shrink-0 text-gray-600" />
+                    <div>
+                      <p className="font-semibold text-gray-900 text-lg">Booking Kadaluarsa</p>
+                      <p className="text-sm text-gray-700 mt-1">
+                        Waktu booking telah melewati batas yang ditentukan. Booking ini tidak dapat digunakan lagi.
+                      </p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {isUpcoming && (
+              <Card className="border-2 border-blue-300 bg-blue-50">
+                <CardContent className="pt-6">
+                  <div className="flex items-start gap-3">
+                    <AlertCircle className="h-6 w-6 mt-0.5 flex-shrink-0 text-blue-600" />
+                    <div>
+                      <p className="font-semibold text-blue-900 text-lg">Booking Akan Datang</p>
+                      <p className="text-sm text-blue-700 mt-1">
+                        Booking ini akan dimulai dalam 24 jam ke depan. Pastikan customer sudah dikonfirmasi.
+                      </p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
             {/* Booking Information */}
             <Card>
               <CardHeader>
@@ -256,8 +299,4 @@ export default async function AdminBookingDetailPage({ params }: PageProps) {
       </div>
     </div>
   )
-  } catch (error) {
-    console.error('Page render error:', error)
-    notFound()
-  }
 }

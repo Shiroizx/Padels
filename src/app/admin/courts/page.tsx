@@ -80,15 +80,15 @@ export default async function AdminCourtsPage() {
           </Card>
         ) : (
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-            {courts.map((court) => (
+            {courts.map((court, index) => (
               <Card key={court.id}>
                 <CardHeader className="p-0">
                   <div className="relative h-48 w-full overflow-hidden rounded-t-lg bg-gray-200">
                     <CourtImage
-                      courtId={court.id}
                       image={court.image}
                       alt={court.name}
                       className="object-cover"
+                      priority={index < 3}
                     />
                   </div>
                 </CardHeader>

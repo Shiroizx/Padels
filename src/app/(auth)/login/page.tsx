@@ -64,9 +64,10 @@ export default function LoginPage() {
         router.push('/dashboard')
       }
       router.refresh()
-    } catch (error: any) {
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Email atau password salah'
       toast.error('Login gagal', {
-        description: error.message || 'Email atau password salah',
+        description: errorMessage,
       })
     } finally {
       setIsLoading(false)
@@ -137,7 +138,7 @@ export default function LoginPage() {
 
                 <div className="rounded-xl bg-gradient-to-r from-green-100 to-emerald-100 p-6">
                   <p className="text-sm font-medium text-green-900">
-                    "Platform yang sangat memudahkan untuk booking lapangan. Prosesnya cepat dan simple!"
+                    &ldquo;Platform yang sangat memudahkan untuk booking lapangan. Prosesnya cepat dan simple!&rdquo;
                   </p>
                   <p className="mt-2 text-xs text-green-700">— Ridwan, Member Aktif</p>
                 </div>
